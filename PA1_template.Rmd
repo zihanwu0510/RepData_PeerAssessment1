@@ -1,25 +1,105 @@
 ---
-title: "Reproducible Research: Peer Assessment 1"
-output: 
+title: 'Reproducible Research: Peer Assessment 1'
+output:
+  pdf_document: default
   html_document:
     keep_md: true
 ---
 
-
 ## Loading and preprocessing the data
+```{R}
+### Load data
+activity <- read.csv("activity.csv")
+filtered_data <- activity[complete.cases(activity),]
+head(filtered_data)
 
-
+### process date
+activity$date <- as.Date(activity$date, format = "%Y-%m-%d")
+```
 
 ## What is mean total number of steps taken per day?
+```{R}
+### calculate total
+total <- aggregate(steps ~ date, filtered_data, sum)
+head(total)
 
+### make histogram
+hist(x = total$steps,
+     main = "The total number of steps per day",
+     xlab = "steps",
+     ylab = "frequency")
 
+### calculate mean and median
+average <- mean(total$steps)
+print(average)
+
+med <- median(total$steps)
+print(med)
+```
 
 ## What is the average daily activity pattern?
+```{R}
+### calculate average step
+avg_steps <- aggregate(steps ~ interval, filtered_data, mean)
 
+### make time series plot
+plot(avg_steps$steps ~ avg_steps$interval, 
+     type = "l", 
+     ylab = "Average steps", 
+     xlab = "Interval",
+     main = "The time series plot")
 
+### find max
+interval_max <- which.max(avg_steps$steps)
+avg_steps[interval_max,]
+```
 
 ## Imputing missing values
+```{R}
+### calculate NA
+sum(is.na(activity))
 
+### input NA and create new dataset
+filled_data <- activity
+na_sequence <- which(is.na(filled_data$steps))
+for (i in na_sequence){
+  current_interval <- filled_data$interval[i]
+  mean_step <- avg_steps$steps[avg_steps$interval == current_interval]
+  filled_data$steps[i] <- mean_step
+}
 
+### calculate total and make histogram
+new_total <- aggregate(steps ~ date, filled_data, sum)
+hist(x = new_total$steps,
+     main = "The total number of steps per day (filled)",
+     xlab = "steps",
+     ylab = "frequency")
+
+### calculate mean and median
+average_filled <- mean(new_total$steps)
+print(average_filled)
+med_filled <- median(new_total$steps)
+print(med_filled)
+```
 
 ## Are there differences in activity patterns between weekdays and weekends?
+```{R}
+### distinguish weekday and weekend
+filled_data$date_type <- factor(ifelse(weekdays(filled_data$date) %in% c("Saturday", "Sunday"), 
+                                        "weekend", "weekday"))
+head(filled_data)
+
+### calculate new average step
+new_avg_steps <- aggregate(steps ~ interval + date_type, filled_data, mean)
+head(new_avg_steps)
+
+### make new time series plot with ggplot2
+library(ggplot2)
+figure <- ggplot(new_avg_steps, aes(
+  x = interval,
+  y = steps)) +
+  geom_line() +
+  facet_grid(date_type ~.) +
+  labs(x = "interval", y = "steps")
+print(figure)
+```
